@@ -1,0 +1,7 @@
+{
+  "status": "blocked",
+  "passed_checks": [],
+  "reason": "Chromium Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR while navigating to the local API.",
+  "evidence": "Browser smoke attempt logged before offline render checks. No security policy was modified.",
+  "note": "The live end-to-end test was NOT completed. Run scripts/browser_smoke.py in your environment."
+}

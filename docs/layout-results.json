@@ -1,0 +1,81 @@
+{
+  "method": "Offline Chromium rendering of compiled view functions with real reports from synthetic PDFs. No browser network, user interaction, or end-to-end certification.",
+  "checks": [
+    {
+      "view": "login",
+      "width": 1440,
+      "content": 1440
+    },
+    {
+      "view": "login",
+      "width": 360,
+      "content": 360
+    },
+    {
+      "view": "login",
+      "width": 390,
+      "content": 390
+    },
+    {
+      "view": "login",
+      "width": 430,
+      "content": 430
+    },
+    {
+      "view": "login",
+      "width": 932,
+      "content": 932
+    },
+    {
+      "view": "dashboard",
+      "width": 1440,
+      "content": 1440
+    },
+    {
+      "view": "dashboard",
+      "width": 360,
+      "content": 360
+    },
+    {
+      "view": "dashboard",
+      "width": 390,
+      "content": 390
+    },
+    {
+      "view": "dashboard",
+      "width": 430,
+      "content": 430
+    },
+    {
+      "view": "dashboard",
+      "width": 932,
+      "content": 932
+    },
+    {
+      "view": "job",
+      "width": 1440,
+      "content": 1440
+    },
+    {
+      "view": "job",
+      "width": 360,
+      "content": 360
+    },
+    {
+      "view": "job",
+      "width": 390,
+      "content": 390
+    },
+    {
+      "view": "job",
+      "width": 430,
+      "content": 430
+    },
+    {
+      "view": "job",
+      "width": 932,
+      "content": 932
+    }
+  ],
+  "overflow_free": true
+}
