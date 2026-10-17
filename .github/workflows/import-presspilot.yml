@@ -1,0 +1,45 @@
+name: Import PressPilot source
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'presspilot-mvp-v0.1.0.zip'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Extract project sources
+        run: |
+          python3 - <<'PY'
+          import zipfile, pathlib, shutil
+          archive = pathlib.Path('presspilot-mvp-v0.1.0.zip')
+          if not archive.exists():
+              raise SystemExit('Archive missing')
+          with zipfile.ZipFile(archive) as z:
+              for member in z.infolist():
+                  path = pathlib.PurePosixPath(member.filename)
+                  if path.is_absolute() or '..' in path.parts or not path.parts or path.parts[0] != 'presspilot-mvp':
+                      raise SystemExit('Unsafe archive entry')
+              z.extractall('.')
+          root = pathlib.Path('presspilot-mvp')
+          for item in root.iterdir():
+              target = pathlib.Path(item.name)
+              if target.exists():
+                  if target.is_dir(): shutil.rmtree(target)
+                  else: target.unlink()
+              shutil.move(str(item), str(target))
+          root.rmdir()
+          archive.unlink()
+          PY
+      - name: Commit unpacked source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet || (git commit -m 'build: unpack PressPilot MVP source' && git push)
