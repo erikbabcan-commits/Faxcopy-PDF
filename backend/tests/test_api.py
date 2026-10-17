@@ -65,6 +65,7 @@ def test_full_upload_scan_report_preview_and_handoff(client,account,upload):
     assert detail['report']['profile_version']==job['profile_version']
     assert detail['report']['timestamp']
     assert detail['report']['final_state']==detail['status']
+    assert detail['report']['metadata']['title']=='Synthetic PressPilot test fixture'
     assert detail['report']['engine']['version']
     assert isinstance(detail['report']['findings'],list)
     assert detail['report_digest']==digest(detail['report'])
@@ -196,7 +197,10 @@ def test_worker_fails_closed_on_changed_input(client,account,upload):
     assert detail['report']['job_id']==job['id']
     assert detail['report']['tenant_id']==account['tenant'].id
     assert detail['report']['final_state']=='error'
+    assert detail['report']['status']=='error'
     assert detail['report']['file_sha256']==job['sha256']
+    assert detail['report']['print_ready'] is False and detail['report']['release_allowed'] is False
+    assert isinstance(detail['report']['findings'],list)
 
 def test_worker_recovery_of_expired_lease(client,account,upload):
     job=upload().json()

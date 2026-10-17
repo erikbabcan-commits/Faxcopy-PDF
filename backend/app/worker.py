@@ -90,22 +90,13 @@ def process_one() -> bool:
             raise ScanFailure("INPUT_INTEGRITY_FAILED")
         payload = scan(path, job.profile_snapshot)
         status = validate_result(job, payload["report"])
-        report = payload["report"]
-        report.update({
-            "job_id": job.id,
-            "tenant_id": job.tenant_id,
-            "profile_id": job.profile_id,
-            "profile_version": job.profile_version,
-            "profile_digest": job.profile_digest,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "final_state": status,
-        })
-        report.setdefault("engine", {"name": "presspilot-basic", "version": "0.1.0"})
     except ScanFailure as exc:
         status, error = "error", str(exc)
+        payload = None
     except Exception:
         log.exception("worker_failure job=%s", job.id)
         status, error = "error", "WORKER_FAILED"
+        payload = None
     report = payload["report"] if payload else {
         "schema_version": 1,
         "engine": {"name": "presspilot-basic", "version": __version__},
@@ -116,6 +107,7 @@ def process_one() -> bool:
         "print_ready": False,
         "release_allowed": False,
         "coverage": {},
+        "metadata": {},
         "summary": {"pages": 0, "errors": 0, "warnings": 0, "info": 0, "image_placements": 0, "fonts": 0, "color_spaces": []},
         "pages": [],
         "images": [],
@@ -127,10 +119,23 @@ def process_one() -> bool:
         "tenant_id": job.tenant_id,
         "profile_id": job.profile_id,
         "profile_version": job.profile_version,
+        "profile_digest": job.profile_digest,
+        "file_sha256": job.sha256,
+        "status": status,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "final_state": status,
+        "print_ready": False,
+        "release_allowed": False,
     })
     report.setdefault("engine", {"name": "presspilot-basic", "version": __version__})
+    report.setdefault("schema_version", 1)
+    report.setdefault("metadata", {})
+    report.setdefault("coverage", {})
+    report.setdefault("summary", {"pages": 0, "errors": 0, "warnings": 0, "info": 0, "image_placements": 0, "fonts": 0, "color_spaces": []})
+    report.setdefault("pages", [])
+    report.setdefault("images", [])
+    report.setdefault("fonts", [])
+    report.setdefault("findings", [])
     with session_factory()() as db:
         result = db.execute(update(Job).where(Job.id == job.id, Job.status == "processing", Job.lease_token == job.lease_token,
                     Job.lease_until > now(), Job.deleted_at.is_(None))

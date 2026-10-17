@@ -25,6 +25,12 @@ def test_synthetic_pdf_results(filename,status,code):
     if code:
         assert code in [f['code'] for f in report.get('findings',[])] or report.get('error_code') == code
 
+def test_pdf_metadata_is_reported_with_bounded_values():
+    report=inspect_pdf((SAMPLES/'01-vizitka-kontrola.pdf').read_bytes(),RULES)
+    assert report['metadata']['title']=='Synthetic PressPilot test fixture'
+    assert report['metadata']['producer']=='PressPilot fixture generator'
+    assert all(len(value)<=500 for value in report['metadata'].values())
+
 @pytest.mark.parametrize('filename', ['01-vizitka-kontrola.pdf','02-chybajuca-spadavka.pdf','03-nizke-rozlisenie.pdf','04-nevlozeny-font.pdf','08-deklaracia-pdfx.pdf'])
 def test_report_reproducibility(filename):
     data=(SAMPLES/filename).read_bytes()

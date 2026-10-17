@@ -56,7 +56,8 @@ Do not expose the loopback-only API directly to the internet. Back up persistent
 ## Build and tests
 
 ```bash
-cd frontend && npm install --ignore-scripts && npm run build
+python -m pip install -r backend/requirements-dev.txt
+cd frontend && npm ci --ignore-scripts && npm run build
 cd ../backend && python -m pytest -q
 cd .. && python scripts/http_smoke.py
 ```

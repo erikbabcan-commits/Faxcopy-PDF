@@ -85,6 +85,7 @@ class Inspector:
         self.operation_count = 0
         self.checked_fonts = set()
         self.reader = None
+        self.metadata = {}
 
     def add(self, code, severity, message, page=None, evidence=None):
         item = {"code": code, "severity": severity, "message": message, "page": page, "evidence": evidence or {}}
@@ -319,6 +320,21 @@ class Inspector:
             if page.get("/Contents"):
                 self.walk_content(page.get("/Contents"), page.get("/Resources", {}), number, unit)
         metadata = self.reader.metadata or {}
+        metadata_fields = {
+            "title": "/Title",
+            "author": "/Author",
+            "subject": "/Subject",
+            "keywords": "/Keywords",
+            "creator": "/Creator",
+            "producer": "/Producer",
+            "creation_date": "/CreationDate",
+            "modification_date": "/ModDate",
+        }
+        self.metadata = {
+            name: str(metadata[key])[:500]
+            for name, key in metadata_fields.items()
+            if metadata.get(key) is not None
+        }
         declaration = str(metadata.get("/GTS_PDFXVersion", ""))[:120]
         if declaration:
             self.add("PDFX_DECLARATION_ONLY", "info", "PDF deklaruje PDF/X. Deklarácia nie je dôkazom zhody so štandardom.", evidence={"claim": declaration})
@@ -337,6 +353,7 @@ class Inspector:
             "print_ready": False,
             "release_allowed": False,
             "coverage": COVERAGE,
+            "metadata": self.metadata,
             "summary": {"pages": len(self.pages), "errors": counts["error"], "warnings": counts["warning"], "info": counts["info"],
                         "image_placements": len(self.images), "fonts": len(self.fonts), "color_spaces": sorted(self.colors)},
             "pages": self.pages, "images": self.images, "fonts": self.fonts, "findings": self.findings,

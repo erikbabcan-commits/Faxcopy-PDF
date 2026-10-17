@@ -81,6 +81,7 @@ def main():
                 expect(page.get_by_role('heading',name='Zákazky',exact=True)).to_be_visible()
                 page.locator('.row-link',has_text='02-chybajuca-spadavka.pdf').click()
                 expect(page.get_by_text('BLEED_TOO_SMALL',exact=True)).to_be_visible()
+                expect(page.get_by_text('PDF metadata',exact=True)).to_be_visible()
                 expect(page.get_by_role('button',name='Prevziať na DTP')).to_have_count(0)
                 checks.append('blocked job findings + cannot accept known errors')
                 page.get_by_role('button',name='Vytvoriť návrh správy').click()

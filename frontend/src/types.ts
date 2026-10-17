@@ -17,8 +17,11 @@ export interface Me {
 export interface Finding {code: string; severity: 'error' | 'warning' | 'info'; message: string; page: number | null; evidence: Record<string, unknown>}
 export interface Summary {pages: number; errors: number; warnings: number; info: number; image_placements: number; fonts: number; color_spaces: string[]}
 export interface Report {
-  schema_version: number; engine?: {name: string; version: string; pypdf_version: string};
+  schema_version: number; engine?: {name: string; version: string; pypdf_version?: string};
+  job_id: string; tenant_id: string; profile_id: string; profile_version: number;
+  timestamp: string; final_state: string;
   file_sha256: string; profile_digest?: string; status: string; print_ready: false; release_allowed: false;
+  metadata?: Record<string, string>;
   summary?: Summary; findings?: Finding[]; coverage?: Record<string, string>;
   pages?: {page: number; width_mm: number; height_mm: number; rotation: number; user_unit: number; explicit_trim_box: boolean; bleed_margins_mm: number[]}[];
   fonts?: {page: number; name: string; subtype: string; embedded_program_present: boolean}[];

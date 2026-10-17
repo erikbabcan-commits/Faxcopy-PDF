@@ -26,6 +26,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path, PurePosixPath
+          import hashlib
           import re
           import stat
           import subprocess
@@ -55,6 +56,8 @@ jobs:
 
               seen = set()
               files = []
+              new_files = []
+              entries_by_path = {}
               for entry in entries:
                   raw = entry.filename
                   normalized = raw[:-1] if entry.is_dir() and raw.endswith("/") else raw
@@ -100,28 +103,33 @@ jobs:
                   for parent in (destination, *destination.parents):
                       if parent != root and parent.is_symlink():
                           raise SystemExit(f"Symlink destination rejected: {parent}")
-                  if destination.exists():
-                      raise SystemExit(f"Existing file collision: {relative}")
                   files.append(relative)
+                  if destination.exists():
+                      if not destination.is_file():
+                          raise SystemExit(f"Existing non-file collision: {relative}")
+                      with source.open(entry) as input_file:
+                          archived_digest = hashlib.sha256(input_file.read()).digest()
+                      if hashlib.sha256(destination.read_bytes()).digest() != archived_digest:
+                          raise SystemExit(f"Existing file differs from archive: {relative}")
+                      continue
+                  new_files.append(relative)
+                  entries_by_path[relative] = entry
 
-              for relative in files:
-                  entry = next(
-                      item for item in entries
-                      if Path(*PurePosixPath(item.filename).parts[1:]) == relative
-                  )
+              for relative in new_files:
+                  entry = entries_by_path[relative]
                   destination = root / relative
                   destination.parent.mkdir(parents=True, exist_ok=True)
                   with source.open(entry) as input_file, destination.open("xb") as output_file:
                       while chunk := input_file.read(1024 * 1024):
                           output_file.write(chunk)
 
-          if files:
+          if new_files:
               subprocess.run(
                   ["git", "add", "--pathspec-from-file=-", "--pathspec-file-nul"],
-                  input=b"\0".join(str(path).encode() for path in files) + b"\0",
+                  input=b"\0".join(str(path).encode() for path in new_files) + b"\0",
                   check=True,
               )
-          print(f"Validated archive; extracted and staged {len(files)} new files.")
+          print(f"Validated archive; extracted and staged {len(new_files)} new files.")
           print("Preserved the repository README, archive, and separately managed CI workflow.")
           PY
       - name: Commit extracted sources

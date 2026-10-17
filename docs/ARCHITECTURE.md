@@ -62,3 +62,7 @@ Oficiálne materiály konzultované pri odovzdaní (neznamenajú certifikáciu a
 - TypeScript strict: https://www.typescriptlang.org/tsconfig/strict.html
 - pypdf strict parsing: https://pypdf.readthedocs.io/en/stable/user/robustness.html
 - Docker Compose networking: https://docs.docker.com/compose/how-tos/networking/
+
+## Report contract
+
+Every persisted worker result carries the job and tenant IDs, input SHA-256, profile ID/version/digest, engine identity/version, UTC timestamp, bounded common PDF metadata, findings, and final state. Worker-side failures also produce an error report with `print_ready=false` and `release_allowed=false`; an incomplete check is never a pass. The current terminal states are `review`, `blocked`, and `error`.

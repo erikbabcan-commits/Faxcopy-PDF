@@ -6,14 +6,14 @@ This is a repository-level review of the recovered source, configuration, and av
 
 | Area | Implementation |
 |---|---|
-| Frontend | TypeScript 5.8.3, strict compiler options, native DOM/CSS, no runtime framework or external CDN. Build: `cd frontend && npm run build`; output: `frontend/dist/`. |
+| Frontend | TypeScript 5.8.3, strict compiler options, native DOM/CSS, no runtime framework or external CDN. Build: `cd frontend && npm ci && npm run build`; output: `frontend/dist/`. |
 | API | Python 3.13 / FastAPI application in `backend/app/main.py`. The API also serves the client at `/` and static assets at `/assets`. |
 | Validation | Pydantic request/profile schemas; SQLAlchemy models; Alembic migration under `backend/migrations/`. SQLite supports local single-worker use; PostgreSQL is configured for Compose. |
 | Authentication | Argon2id password hashing, opaque server-side sessions in HttpOnly/SameSite cookies, Origin and CSRF checks for writes, database-backed login throttling, expiring hashed API keys with narrow scopes. |
 | Authorization | Owner/operator/viewer role checks and tenant filtering in API queries. Isolation is application-enforced; PostgreSQL row-level security is not configured. |
 | Queue | Database-backed queue with conditional claims, PostgreSQL `SKIP LOCKED`, worker lease/fencing, bounded manual retries, and periodic retention work. Redis is not used. |
 | PDF worker | `backend/app/worker.py` processes queued jobs. Compose sends scan requests to a private scanner service with no database or document volume. Local mode uses a limited subprocess, not a complete sandbox. |
-| PDF inspection | Strict pypdf parsing; page boxes and geometry; image-placement DPI; font-program presence; color-space inventory; selected active-content markers; encrypted/corrupt-document handling. Reports are fail-closed and do not authorize print release. |
+| PDF inspection | Strict pypdf parsing; page boxes and geometry; image-placement DPI; font-program presence; color-space inventory; selected active-content markers; common metadata fields; encrypted/corrupt-document handling. Reports are fail-closed and do not authorize print release. |
 | Storage | Tenant/job directories on a persistent local volume; original bytes are hashed and not rewritten by the inspector. Retention removes job data; crash-orphan reconciliation is not implemented. |
 | Optional assistant | Rules-first output; optional operator-configured Ollama receives selected generic findings only. It does not receive PDFs, extracted text, filenames, or customer identifiers. |
 | Deployment | Docker Compose describes a single-host API, PostgreSQL, worker, and scanner arrangement. Vercel can serve only the static client unless a separately deployed API is explicitly integrated. No deployment is configured here. |
@@ -41,11 +41,13 @@ Upload is persisted and queued, then claimed by a worker and finalized as `revie
 ### Medium
 
 - **Tenant isolation has no database RLS backstop.** Current API queries apply tenant predicates, and tenant-isolation tests exist. A future query regression or compromised application identity could bypass this application-layer control.
-- **Dependency supply-chain verification is incomplete.** Direct Python packages are pinned, but there is no complete Python transitive lock or recorded current vulnerability audit. Frontend dependency resolution is not committed as a lockfile.
+- **Metadata coverage is intentionally limited.** Reports expose a bounded set of common document-info fields; this is not a complete XMP/metadata audit.
+- **Dependency supply-chain verification is incomplete.** Direct Python packages are pinned and the frontend has an npm lockfile. The advisory database found vulnerable versions in the original Starlette, python-multipart, pypdf, and cryptography pins; these have been upgraded to patched releases. A full transitive Python lock and independent package/image audit are still outstanding.
 - **Production database behavior needs runtime verification.** PostgreSQL queue locking, concurrency, migrations, and restore behavior must be tested on the target host; SQLite coverage does not establish PostgreSQL correctness.
 - **Operational controls remain external or incomplete.** Configure trusted proxy/IP rate limiting and edge request limits, monitor storage and worker failures, and add orphan-file reconciliation and tested backups before customer use.
 - **Retention is not a complete erasure policy.** Job files and records are removed according to configured retention, while audit history and hashes may persist. Establish contractual retention and deletion requirements before onboarding customers.
 - **No antivirus, malware-clean verdict, RIP simulation, color proof, or visual bleed verification is implemented.** Active-content markers are a conservative block signal, not malware scanning.
+- **Requested interface polish is incomplete.** The dashboard has responsive layouts, forms, tables, audit, profiles, and team/settings views, but no light/dark theme control or persisted theme preference. WCAG AA has not been independently measured.
 
 ### Low
 

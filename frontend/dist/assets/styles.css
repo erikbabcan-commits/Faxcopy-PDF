@@ -16,4 +16,5 @@
 th{font-size:10px}.file-cell small,td>small{font-size:10px}.metric>small{font-size:10px}.panel-heading p{font-size:11px}
 @media(max-width:480px){.metric>small{font-size:9px}.panel-heading p{font-size:10px}.scope-strip p{font-size:10px}}
 .login-story,.login-form-wrap{min-width:0}
+.metadata-list{display:grid;gap:10px}.metadata-list>div{display:grid;grid-template-columns:minmax(90px,140px) minmax(0,1fr);gap:16px;border-bottom:1px solid var(--line);padding:9px 0}.metadata-list dt{color:var(--muted);font-size:11px}.metadata-list dd{margin:0;overflow-wrap:anywhere;font-size:11px}
 @media(max-width:760px){.login-screen{grid-template-columns:minmax(0,1fr)!important}}
