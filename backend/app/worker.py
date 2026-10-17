@@ -6,6 +6,8 @@ from pathlib import Path
 import signal
 import time
 import uuid
+from datetime import datetime, timezone
+from . import __version__
 from PIL import Image
 from sqlalchemy import delete, select, update
 from .config import settings
@@ -88,11 +90,47 @@ def process_one() -> bool:
             raise ScanFailure("INPUT_INTEGRITY_FAILED")
         payload = scan(path, job.profile_snapshot)
         status = validate_result(job, payload["report"])
+        report = payload["report"]
+        report.update({
+            "job_id": job.id,
+            "tenant_id": job.tenant_id,
+            "profile_id": job.profile_id,
+            "profile_version": job.profile_version,
+            "profile_digest": job.profile_digest,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "final_state": status,
+        })
+        report.setdefault("engine", {"name": "presspilot-basic", "version": "0.1.0"})
     except ScanFailure as exc:
         status, error = "error", str(exc)
     except Exception:
         log.exception("worker_failure job=%s", job.id)
         status, error = "error", "WORKER_FAILED"
+    report = payload["report"] if payload else {
+        "schema_version": 1,
+        "engine": {"name": "presspilot-basic", "version": __version__},
+        "file_sha256": job.sha256,
+        "profile_digest": job.profile_digest,
+        "status": "error",
+        "error_code": error or "WORKER_FAILED",
+        "print_ready": False,
+        "release_allowed": False,
+        "coverage": {},
+        "summary": {"pages": 0, "errors": 0, "warnings": 0, "info": 0, "image_placements": 0, "fonts": 0, "color_spaces": []},
+        "pages": [],
+        "images": [],
+        "fonts": [],
+        "findings": [],
+    }
+    report.update({
+        "job_id": job.id,
+        "tenant_id": job.tenant_id,
+        "profile_id": job.profile_id,
+        "profile_version": job.profile_version,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "final_state": status,
+    })
+    report.setdefault("engine", {"name": "presspilot-basic", "version": __version__})
     with session_factory()() as db:
         result = db.execute(update(Job).where(Job.id == job.id, Job.status == "processing", Job.lease_token == job.lease_token,
                     Job.lease_until > now(), Job.deleted_at.is_(None))
@@ -101,7 +139,7 @@ def process_one() -> bool:
             db.rollback()
             return True  # Stale result is fenced off; no files or reports are overwritten.
         current = db.get(Job, job.id)
-        current.report = payload["report"] if payload else None
+        current.report = report
         current.report_digest = digest(current.report) if current.report else None
         current.error_code = error or (current.report or {}).get("error_code")
         current.preview_available = False

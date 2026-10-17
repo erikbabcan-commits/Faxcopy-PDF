@@ -148,7 +148,7 @@ def change_password(payload: PasswordIn, response: Response, principal=Depends(c
     db.execute(delete(SessionToken).where(SessionToken.user_id == user.id))
     audit(db, user.tenant_id, "auth.password_changed", actor_id=user.id)
     db.commit()
-    response.delete_cookie(COOKIE, path="/")
+    response.delete_cookie(COOKIE, path="/", secure=settings().secure_cookies, httponly=True, samesite="strict")
     return {"ok": True, "detail": "Heslo bolo zmenené. Prihláste sa znova."}
 
 

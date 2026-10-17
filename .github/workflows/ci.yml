@@ -1,0 +1,46 @@
+name: Verify PressPilot pilot
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install backend test dependencies
+        run: python -m pip install -r backend/requirements-dev.txt
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Check committed frontend build
+        run: git diff --exit-code -- frontend/dist
+      - name: Run backend tests
+        working-directory: backend
+        run: python -m pytest -q
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Run browser smoke test
+        run: python scripts/browser_smoke.py
+      - name: Upload browser verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-verification
+          path: |
+            docs/screenshots
+            docs/browser-results.json

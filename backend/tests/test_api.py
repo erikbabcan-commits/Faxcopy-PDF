@@ -44,6 +44,13 @@ def test_logout_revokes_session(client,account):
     assert client.post('/api/auth/logout',headers=account['headers']).status_code==200
     assert client.get('/api/me').status_code==401
 
+def test_password_change_expires_session_cookie_safely(client,account):
+    response=client.post('/api/auth/password',headers=account['headers'],json={'old_password':PASSWORD,'new_password':'Another-Strong-Test-Password-294!'})
+    assert response.status_code==200
+    cookie=response.headers['set-cookie'].lower()
+    assert 'httponly' in cookie and 'samesite=strict' in cookie
+    assert client.get('/api/me').status_code==401
+
 def test_full_upload_scan_report_preview_and_handoff(client,account,upload):
     response=upload();assert response.status_code==201,response.text
     job=response.json()
@@ -52,6 +59,14 @@ def test_full_upload_scan_report_preview_and_handoff(client,account,upload):
     detail=client.get('/api/jobs/'+job['id']).json()
     assert detail['status']=='review'
     assert detail['report']['release_allowed'] is False
+    assert detail['report']['job_id']==job['id']
+    assert detail['report']['tenant_id']==account['tenant'].id
+    assert detail['report']['profile_id']==job['profile_id']
+    assert detail['report']['profile_version']==job['profile_version']
+    assert detail['report']['timestamp']
+    assert detail['report']['final_state']==detail['status']
+    assert detail['report']['engine']['version']
+    assert isinstance(detail['report']['findings'],list)
     assert detail['report_digest']==digest(detail['report'])
     assert client.get(f"/api/jobs/{job['id']}/preview").headers['content-type']=='image/png'
     original=client.get(f"/api/jobs/{job['id']}/original")
@@ -178,6 +193,10 @@ def test_worker_fails_closed_on_changed_input(client,account,upload):
     assert process_one()
     detail=client.get('/api/jobs/'+job['id']).json()
     assert detail['status']=='error' and detail['error_code']=='INPUT_INTEGRITY_FAILED'
+    assert detail['report']['job_id']==job['id']
+    assert detail['report']['tenant_id']==account['tenant'].id
+    assert detail['report']['final_state']=='error'
+    assert detail['report']['file_sha256']==job['sha256']
 
 def test_worker_recovery_of_expired_lease(client,account,upload):
     job=upload().json()
