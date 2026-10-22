@@ -26,8 +26,10 @@ PDFs. It is not a production deployment. See [architecture](docs/ARCHITECTURE.md
 
 PDF preflight is conservative, not malware certification or PDF/X compliance.
 Untrusted production uploads require the dedicated resource-limited scanner.
-Original execution logs/screenshots remain in the historical ZIP and are not
-republished as current test evidence. Parser/image pins are upgraded in this PR;
+Original verification snapshots and synthetic offline screenshots from v0.1.0
+are included under `docs/`. They describe the supplied archive, not the current
+branch test results or a deployed service. `MANIFEST.sha256` describes that
+original archive; newer parser/CI fixes intentionally differ from its hashes. Parser/image pins are upgraded in this PR;
 framework advisories still require compatibility review before internet exposure.
 No production credentials, migrations, deployment or auto-import commit is used.
 CI verifies the PR SHA; inspect its actual results rather than assuming green.

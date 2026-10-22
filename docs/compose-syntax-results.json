@@ -1,0 +1,11 @@
+{
+  "status": "syntax_checked",
+  "parser": "PyYAML safe_load",
+  "checks": [
+    "five services present",
+    "scanner has no host ports",
+    "scanner network internal",
+    "API port restricted to loopback"
+  ],
+  "note": "Not docker compose config or a runtime test. Docker not installed."
+}
