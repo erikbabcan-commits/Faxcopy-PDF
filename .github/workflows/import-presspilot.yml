@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: true
-      - name: Validate and extract archive without overwriting existing files
+      - name: Validate archive and extract sources without overwriting existing files
         run: |
           python3 - <<'PY'
           from pathlib import Path, PurePosixPath
@@ -27,6 +27,8 @@ jobs:
           archive = Path('presspilot-mvp-v0.1.0.zip')
           if not archive.is_file():
               raise SystemExit('Required source archive missing')
+          def is_actions_workflow(path):
+              return path.parts[:2] == ('.github', 'workflows')
           with zipfile.ZipFile(archive) as z:
               entries = z.infolist()
               if len(entries) > 500:
@@ -45,6 +47,8 @@ jobs:
                   rel = Path(*path.parts[1:])
                   if not rel.parts:
                       raise SystemExit('Invalid archive entry')
+                  if is_actions_workflow(rel):
+                      continue
                   dest = Path.cwd() / rel
                   if dest.exists() and rel != Path('README.md'):
                       raise SystemExit(f'Existing file collision: {rel}')
@@ -54,7 +58,7 @@ jobs:
                   if e.is_dir():
                       continue
                   rel = Path(*PurePosixPath(e.filename).parts[1:])
-                  if rel == Path('README.md'):
+                  if rel == Path('README.md') or is_actions_workflow(rel):
                       continue
                   dest = Path.cwd() / rel
                   dest.parent.mkdir(parents=True, exist_ok=True)
