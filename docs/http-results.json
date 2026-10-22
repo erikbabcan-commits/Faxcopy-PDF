@@ -1,0 +1,25 @@
+{
+  "status": "passed",
+  "checks": [
+    "HTTP login and server session",
+    "HTTP upload > DB queue > worker > private scanner HTTP > review: 01-vizitka-kontrola.pdf",
+    "HTTP upload > DB queue > worker > private scanner HTTP > blocked: 02-chybajuca-spadavka.pdf",
+    "HTTP upload > DB queue > worker > private scanner HTTP > error: 06-poskodeny-subor.pdf",
+    "HTTP raster preview + original hash integrity",
+    "HTTP manual DTP handoff retains false release flag"
+  ],
+  "passed": 6,
+  "transport": "real localhost HTTP",
+  "services": [
+    "api",
+    "worker",
+    "scanner"
+  ],
+  "database": "SQLite",
+  "limitations": [
+    "Not Docker isolation",
+    "Not PostgreSQL",
+    "Not browser interaction",
+    "Not malicious PDF security audit"
+  ]
+}
