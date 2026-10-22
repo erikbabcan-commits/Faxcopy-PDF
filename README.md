@@ -1,11 +1,35 @@
-# Faxcopy-PDF / PressPilot MVP
+# PressPilot / Faxcopy PDF — pilot
 
-DTP preflight automation pilot: PDF inspection, workflow, audit reports, Python FastAPI backend and TypeScript dashboard.
+Python/FastAPI document inspection API, worker and dependency-free TypeScript
+browser client. The reviewable source is now in `backend/`, `frontend/`,
+`scripts/` and `infra/`; the original versioned ZIP remains unchanged. The MIT
+license covers original source; branding and third-party licensing need owner
+review before commercialization.
 
-## Deployment architecture
+## Local synthetic reproduction
 
-- Vercel: static frontend only.
-- Separate container host: Python API, persistent database and PDF scanner worker.
-- Never expose the backend or PDF files without authentication and tenant isolation.
+```sh
+python -m venv .venv
+. .venv/bin/activate
+pip install -r backend/requirements-dev.txt
+(cd frontend && npm ci --ignore-scripts && npm run typecheck && npm run build)
+(cd backend && python -m pytest -q)
+python scripts/browser_smoke.py
+```
 
-**Status:** Repository initialization. Full source import and production deployment are pending. Do not treat this repository as a functioning deployment.
+The browser scenario needs Playwright Chromium (`python -m playwright install
+chromium`) and uses generated local accounts, a temporary database and synthetic
+PDFs. It is not a production deployment. See [architecture](docs/ARCHITECTURE.md),
+[operations](docs/OPERATIONS.md) and [original scope](docs/ORIGINAL_README.md).
+
+## Security and verification limits
+
+PDF preflight is conservative, not malware certification or PDF/X compliance.
+Untrusted production uploads require the dedicated resource-limited scanner.
+Original verification snapshots and synthetic offline screenshots from v0.1.0
+are included under `docs/`. They describe the supplied archive, not the current
+branch test results or a deployed service. `MANIFEST.sha256` describes that
+original archive; newer parser/CI fixes intentionally differ from its hashes. Parser/image pins are upgraded in this PR;
+framework advisories still require compatibility review before internet exposure.
+No production credentials, migrations, deployment or auto-import commit is used.
+CI verifies the PR SHA; inspect its actual results rather than assuming green.

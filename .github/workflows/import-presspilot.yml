@@ -1,77 +1,14 @@
-name: Import PressPilot source
+# Source is reviewed in pull requests; this workflow never commits to main.
+name: Validate archived distribution
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'presspilot-mvp-v0.1.0.zip'
-      - '.github/workflows/import-presspilot.yml'
   workflow_dispatch:
 permissions:
-  contents: write
-concurrency:
-  group: presspilot-import-main
-  cancel-in-progress: false
+  contents: read
 jobs:
-  unpack:
-    if: github.repository == 'erikbabcan-commits/Faxcopy-PDF'
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          persist-credentials: true
-      - name: Validate archive and extract sources without overwriting existing files
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path, PurePosixPath
-          import zipfile, stat
-          archive = Path('presspilot-mvp-v0.1.0.zip')
-          if not archive.is_file():
-              raise SystemExit('Required source archive missing')
-          def is_actions_workflow(path):
-              return path.parts[:2] == ('.github', 'workflows')
-          with zipfile.ZipFile(archive) as z:
-              entries = z.infolist()
-              if len(entries) > 500:
-                  raise SystemExit('Too many archive entries')
-              total = sum(e.file_size for e in entries)
-              if total > 80 * 1024 * 1024:
-                  raise SystemExit('Archive too large')
-              for e in entries:
-                  path = PurePosixPath(e.filename)
-                  if path.is_absolute() or '..' in path.parts or not path.parts or path.parts[0] != 'presspilot-mvp':
-                      raise SystemExit(f'Unsafe path: {e.filename}')
-                  if stat.S_ISLNK((e.external_attr >> 16) & 0xFFFF):
-                      raise SystemExit(f'Symlink rejected: {e.filename}')
-                  if e.is_dir():
-                      continue
-                  rel = Path(*path.parts[1:])
-                  if not rel.parts:
-                      raise SystemExit('Invalid archive entry')
-                  if is_actions_workflow(rel):
-                      continue
-                  dest = Path.cwd() / rel
-                  if dest.exists() and rel != Path('README.md') and dest.read_bytes() != z.read(e):
-                      raise SystemExit(f'Existing file collision: {rel}')
-                  if dest.is_symlink():
-                      raise SystemExit(f'Symlink destination: {rel}')
-              for e in entries:
-                  if e.is_dir():
-                      continue
-                  rel = Path(*PurePosixPath(e.filename).parts[1:])
-                  if rel == Path('README.md') or is_actions_workflow(rel):
-                      continue
-                  dest = Path.cwd() / rel
-                  dest.parent.mkdir(parents=True, exist_ok=True)
-                  with z.open(e) as src, dest.open('wb') as out:
-                      import shutil
-                      shutil.copyfileobj(src, out)
-          PY
-      - name: Commit extracted sources
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A -- . ':!presspilot-mvp-v0.1.0.zip'
-          if ! git diff --cached --quiet; then
-            git commit -m 'build: import PressPilot source files'
-            git push
-          fi
+          persist-credentials: false
+      - run: python -m zipfile -t presspilot-mvp-v0.1.0.zip
