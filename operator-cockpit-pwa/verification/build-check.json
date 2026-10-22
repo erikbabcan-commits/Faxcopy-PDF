@@ -1,0 +1,10 @@
+{
+  "build": "PASS",
+  "provider_secret_canary_scan": "PASS",
+  "canary_count": 4,
+  "scanned_files": 14,
+  "leak_files": [],
+  "environment": {
+    "node": "v24.19.0"
+  }
+}
