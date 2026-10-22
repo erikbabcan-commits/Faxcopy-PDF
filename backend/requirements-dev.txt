@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest==9.0.2
+playwright==1.57.0
+
+# Optional fixture regeneration (AES-256 encrypted synthetic sample)
+cryptography==46.0.4

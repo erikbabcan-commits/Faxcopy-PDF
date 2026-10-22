@@ -1,0 +1,14 @@
+{
+  "name": "presspilot-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Typed, dependency-free browser client for the PressPilot pilot API",
+  "scripts": {
+    "build": "tsc --project tsconfig.json && node scripts/build.mjs",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "test": "npm run typecheck"
+  },
+  "devDependencies": {"typescript": "5.8.3"},
+  "engines": {"node": ">=22"}
+}

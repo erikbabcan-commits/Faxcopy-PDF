@@ -1,0 +1,115 @@
+name: presspilot
+
+x-app-environment: &app-environment
+  APP_ENV: ${APP_ENV:-pilot}
+  APP_ORIGIN: ${APP_ORIGIN:-http://localhost:8080}
+  SECURE_COOKIES: ${SECURE_COOKIES:-false}
+  DATABASE_URL: postgresql+psycopg://presspilot:${POSTGRES_PASSWORD:?Generate .env first}@db:5432/presspilot
+  DATA_DIR: /app/data
+  STATIC_DIR: /app/web
+  MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+  SCAN_TIMEOUT_SECONDS: ${SCAN_TIMEOUT_SECONDS:-45}
+  SCANNER_URL: http://scanner:9000
+  SCANNER_TOKEN: ${SCANNER_TOKEN:?Generate .env first}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_MODEL: ${LLM_MODEL:-}
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: presspilot-app:0.1.0
+  user: "10001:10001"
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=256m,uid=10001,gid=10001,mode=0700
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  environment: *app-environment
+  volumes: [documents:/app/data]
+  restart: unless-stopped
+  init: true
+  pids_limit: 128
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: presspilot
+      POSTGRES_USER: presspilot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate .env first}
+    volumes: [postgres:/var/lib/postgresql/data]
+    networks: [database]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U presspilot -d presspilot"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+    shm_size: 128mb
+
+  migrate:
+    <<: *app
+    command: ["python", "-m", "app.manage", "migrate"]
+    restart: "no"
+    networks: [database]
+    depends_on:
+      db: {condition: service_healthy}
+
+  api:
+    <<: *app
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--no-proxy-headers", "--no-access-log"]
+    ports: ["127.0.0.1:8080:8080"]
+    networks: [default, database]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/readyz', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    mem_limit: 768m
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "app.worker"]
+    networks: [database, scan]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      scanner: {condition: service_healthy}
+    mem_limit: 512m
+
+  scanner:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.scanner
+    image: presspilot-scanner:0.1.0
+    environment:
+      SCANNER_TOKEN: ${SCANNER_TOKEN:?Generate .env first}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+      SCAN_TIMEOUT_SECONDS: ${SCAN_TIMEOUT_SECONDS:-45}
+    networks: [scan]
+    # NO host ports, database network or document volume.
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m,uid=10001,gid=10001,mode=0700
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 96
+    mem_limit: 1536m
+    cpus: 1.5
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/healthz', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+networks:
+  database: {internal: true}
+  scan: {internal: true}
+volumes:
+  documents:
+  postgres:

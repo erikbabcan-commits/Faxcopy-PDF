@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+.venv/
+.local/
+**/__pycache__/
+**/.pytest_cache/
+**/node_modules/
+**/*.pyc
+*.db
+*.db-wal
+*.db-shm
+backend/data/
+*.log
+.coverage
+htmlcov/
