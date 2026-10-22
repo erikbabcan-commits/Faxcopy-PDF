@@ -50,7 +50,7 @@ jobs:
                   if is_actions_workflow(rel):
                       continue
                   dest = Path.cwd() / rel
-                  if dest.exists() and rel != Path('README.md'):
+                  if dest.exists() and rel != Path('README.md') and dest.read_bytes() != z.read(e):
                       raise SystemExit(f'Existing file collision: {rel}')
                   if dest.is_symlink():
                       raise SystemExit(f'Symlink destination: {rel}')
