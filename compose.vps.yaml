@@ -1,5 +1,7 @@
 # Explicitly opt in: docker compose --env-file .env.vps -f compose.yaml -f compose.vps.yaml ...
 # Requires Compose >= 2.24.4 for !reset / !override.
+name: presspilot-vps
+
 x-production-environment: &production-environment
   APP_ENV: production
   APP_ORIGIN: https://${APP_DOMAIN:?Generate .env.vps first}

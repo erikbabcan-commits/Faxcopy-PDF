@@ -25,7 +25,7 @@ on the actual VPS before using them.
 python scripts/make_vps_env.py --domain pdf.vorkei.com \
   --proxy-subnet 172.30.250.0/29 --proxy-ip 172.30.250.2
 python scripts/check_vps_config.py
-docker compose --env-file .env.vps -f compose.yaml -f compose.vps.yaml build
+docker compose -p presspilot-vps --env-file .env.vps -f compose.yaml -f compose.vps.yaml build
 ```
 
 The generator creates a new mode-0600 `.env.vps` with independent random DB
@@ -33,6 +33,8 @@ passwords and scanner token. Existing files are never overwritten. Protect it
 with a secret manager/encrypted backup. `check_vps_config.py` inspects rendered
 configuration internally without printing connection strings or secrets.
 
+The explicit project name `presspilot-vps` separates this deployment from the
+loopback pilot project. Keep it consistent across every lifecycle command.
 API/worker/migrator use production mode and secure cookies for the exact HTTPS
 origin. Only Caddy publishes 80/443. API has no host port; DB and scanner stay on
 internal networks. Uvicorn trusts only Caddy's fixed internal IP and Caddy
@@ -72,8 +74,8 @@ after adding its explicit A record; do not delete the entire wildcard by default
 No concrete A/AAAA value can be given until the VPS address is supplied.
 
 ```sh
-docker compose --env-file .env.vps -f compose.yaml -f compose.vps.yaml up -d --no-build
-docker compose --env-file .env.vps -f compose.yaml -f compose.vps.yaml ps
+docker compose -p presspilot-vps --env-file .env.vps -f compose.yaml -f compose.vps.yaml up -d --no-build
+docker compose -p presspilot-vps --env-file .env.vps -f compose.yaml -f compose.vps.yaml ps
 ```
 
 Caddy obtains/renews the public certificate once DNS and inbound challenge ports

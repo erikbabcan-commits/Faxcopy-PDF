@@ -7,8 +7,9 @@ from urllib.parse import urlsplit
 
 def main():
     root=Path(__file__).resolve().parents[1]
-    result=subprocess.run(['docker','compose','--env-file','.env.vps','-f','compose.yaml','-f','compose.vps.yaml','config','--format','json'],cwd=root,capture_output=True,text=True,check=True)
+    result=subprocess.run(['docker','compose','-p','presspilot-vps','--env-file','.env.vps','-f','compose.yaml','-f','compose.vps.yaml','config','--format','json'],cwd=root,capture_output=True,text=True,check=True)
     config=json.loads(result.stdout)
+    assert config['name']=='presspilot-vps'
     services=config['services'];api=services['api'];edge=services['edge']
     for name in ('api','db','scanner','worker','migrate'):
         assert not services[name].get('ports'), 'Only the TLS proxy may publish ports'
