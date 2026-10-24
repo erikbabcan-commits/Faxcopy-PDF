@@ -1,6 +1,7 @@
 """Real HTTP smoke: API + worker + scanner subprocesses; disposable local data.
 This verifies transport and processing, not Docker isolation or browser behavior.
 """
+import argparse
 import hashlib
 import json
 import os
@@ -24,6 +25,9 @@ def free_port():
 
 
 def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--report',type=Path,default=ROOT/'docs'/'http-results.json')
+    args=parser.parse_args()
     processes=[];logfiles=[];checks=[]
     with tempfile.TemporaryDirectory(prefix='pp-http-test-') as tmp:
         root=Path(tmp);api_port,scanner_port=free_port(),free_port()
@@ -80,7 +84,7 @@ def main():
                 assert client.get('/api/stats').json()['accepted']==1
                 checks.append('HTTP manual DTP handoff retains false release flag')
             result={'status':'passed','checks':checks,'passed':len(checks),'transport':'real localhost HTTP','services':['api','worker','scanner'],'database':'SQLite','limitations':['Not Docker isolation','Not PostgreSQL','Not browser interaction','Not malicious PDF security audit']}
-            target=ROOT/'docs'/'http-results.json';target.parent.mkdir(exist_ok=True)
+            target=args.report;target.parent.mkdir(parents=True,exist_ok=True)
             target.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8');print(json.dumps(result,indent=2))
         finally:
             for p in processes:
