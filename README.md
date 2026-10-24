@@ -6,6 +6,20 @@ browser client. The reviewable source is now in `backend/`, `frontend/`,
 license covers original source; branding and third-party licensing need owner
 review before commercialization.
 
+## MacBook Air: local start without Docker
+
+See [the MacBook Air guide](docs/MACBOOK_AIR.md) for Intel / Monterey setup.
+With Python 3.12 or 3.13 installed:
+
+```sh
+bash scripts/setup_local.sh
+bash Start-PressPilot.command
+```
+
+Open http://localhost:8080. The setup preserves existing local data and uses
+the committed frontend build; Node is only needed when editing the frontend.
+Run `bash scripts/setup_local.sh --verify` for disposable backend + HTTP checks.
+
 ## Local synthetic reproduction
 
 ```sh

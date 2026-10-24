@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import socket
 import subprocess
 import sys
 import time
@@ -21,8 +22,8 @@ def main():
     commands.add_parser('serve',help='Start API + worker on loopback only; Ctrl+C stops both')
     args=parser.parse_args()
     if not 1024 <= args.port <= 65535:parser.error('Port must be between 1024 and 65535')
-    local=ROOT/'.local';local.mkdir(exist_ok=True)
     os.umask(0o077)
+    local=ROOT/'.local';local.mkdir(exist_ok=True)
     # This launcher always uses a dedicated local pilot, never a production .env.
     os.environ.update(APP_ENV='pilot',APP_ORIGIN=f'http://localhost:{args.port}',
         DATABASE_URL='sqlite:///'+str(local/'presspilot.db'),DATA_DIR=str(local/'data'),
@@ -42,12 +43,21 @@ def main():
         if password!=getpass.getpass('Repeat password: '):parser.error('Passwords do not match')
         with session_factory()() as db:
             tenant,user=provision(db,args.workspace,args.email,password)
+        identity=json.dumps({'workspace_id':tenant.id,'workspace':tenant.name,'email':user.email},ensure_ascii=False,indent=2)
+        (local/'workspace.json').write_text(identity+'\n',encoding='utf-8')
+        print(identity)
+        print('Login details saved to .local/workspace.json (password is not stored there).')
         if args.seed_demo:seed_demo(tenant.id,ROOT/'samples')
-        print(json.dumps({'workspace_id':tenant.id,'workspace':tenant.name,'email':user.email},ensure_ascii=False,indent=2))
         print('Save the workspace ID. Next: python scripts/run_local.py serve')
         return 0
     if not (local/'presspilot.db').exists():parser.error('Initialize first: python scripts/run_local.py init --workspace "My print shop" --email "owner@example.com"')
     if not (ROOT/'frontend'/'dist'/'index.html').exists():parser.error('Frontend is missing. Run npm run build in frontend/.')
+    try:
+        with socket.socket() as probe:
+            probe.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+            probe.bind(('127.0.0.1',args.port))
+    except OSError:
+        parser.error(f'Port {args.port} is unavailable. Stop the existing instance or use --port 8081 serve.')
     migrate()
     commands=[
         [sys.executable,'-m','uvicorn','app.main:app','--host','127.0.0.1','--port',str(args.port),'--no-proxy-headers','--no-access-log'],
