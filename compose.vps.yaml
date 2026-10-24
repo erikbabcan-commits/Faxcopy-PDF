@@ -1,0 +1,59 @@
+# Explicitly opt in: docker compose --env-file .env.vps -f compose.yaml -f compose.vps.yaml ...
+# Requires Compose >= 2.24.4 for !reset / !override.
+x-production-environment: &production-environment
+  APP_ENV: production
+  APP_ORIGIN: https://${APP_DOMAIN:?Generate .env.vps first}
+  SECURE_COOKIES: "true"
+
+services:
+  api:
+    environment: *production-environment
+    ports: !reset []
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--forwarded-allow-ips", "${PROXY_IP:?Choose a free private proxy subnet/IP}", "--no-access-log"]
+    networks: !override
+      proxy: {}
+      database: {}
+
+  worker:
+    environment: *production-environment
+
+  migrate:
+    environment: *production-environment
+
+  db:
+    mem_limit: 512m
+
+  edge:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.edge
+    image: presspilot-edge:vps
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Generate .env.vps first}
+    user: "10001:10001"
+    ports: ["80:80", "443:443"]
+    networks:
+      proxy:
+        ipv4_address: ${PROXY_IP:?Choose a free private proxy subnet/IP}
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001,mode=0700"]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    volumes: [caddy_data:/data, caddy_config:/config]
+    pids_limit: 128
+    mem_limit: 256m
+    restart: unless-stopped
+    init: true
+    depends_on:
+      api: {condition: service_healthy}
+
+networks:
+  proxy:
+    ipam:
+      config:
+        - subnet: ${PROXY_SUBNET:?Choose an unused RFC1918 /24 through /29 subnet}
+
+volumes:
+  caddy_data:
+  caddy_config:

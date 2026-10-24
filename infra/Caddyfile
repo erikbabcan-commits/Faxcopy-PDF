@@ -1,0 +1,27 @@
+{
+	servers {
+		max_header_size 32KB
+		timeouts {
+			read_header 10s
+			read_body 90s
+			write 120s
+			idle 60s
+		}
+	}
+}
+
+{$APP_DOMAIN} {
+	request_body {
+		max_size 27MiB
+	}
+	reverse_proxy api:8080 {
+		# Replace client-supplied forwarding claims with the actual peer.
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+		transport http {
+			dial_timeout 5s
+			response_header_timeout 60s
+		}
+	}
+}
