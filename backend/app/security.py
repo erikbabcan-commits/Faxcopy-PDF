@@ -67,7 +67,8 @@ def current(request: Request, db=Depends(get_db)) -> Principal:
         user = db.get(User, key.user_id)
         if not user or not user.active or user.tenant_id != key.tenant_id:
             raise HTTPException(401, "Účet API kľúča nie je aktívny.")
-        path = request.url.path
+        # Authorize the same path used by ASGI routing, never a URL rebuilt from Host.
+        path = request.scope["path"]
         readable = request.method == "GET" and (path == "/api/profiles" or path == "/api/jobs" or path.startswith("/api/jobs/"))
         uploadable = request.method == "POST" and path == "/api/jobs" and key.scope == "upload"
         if not (readable or uploadable):

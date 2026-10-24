@@ -5,9 +5,9 @@ starlette==0.50.0
 uvicorn==0.48.0
 SQLAlchemy==2.0.50
 alembic==1.18.4
-pydantic-settings==2.14.1
+pydantic-settings==2.14.2
 argon2-cffi==25.1.0
-python-multipart==0.0.29
+python-multipart==0.0.31
 pypdf==6.21.2
 pypdfium2==5.8.0
 Pillow==13.0.0
