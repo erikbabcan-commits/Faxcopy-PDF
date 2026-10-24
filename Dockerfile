@@ -15,6 +15,8 @@ COPY backend/alembic.ini ./alembic.ini
 COPY backend/migrations ./migrations
 COPY frontend/dist /app/web
 COPY samples /app/samples
+# Checkout umask must not make root-owned application files unreadable at runtime.
+RUN chmod -R a+rX /app/backend /app/web /app/samples
 USER 10001:10001
 ENV DATA_DIR=/app/data STATIC_DIR=/app/web
 EXPOSE 8080

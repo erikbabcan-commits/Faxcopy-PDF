@@ -67,3 +67,22 @@ jobs:
           RUNTIME_PASSWORD: runtime
       - run: python -m pytest tests/test_postgres_integration.py -q
         working-directory: backend
+
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - name: Generate disposable test configuration
+        run: python scripts/make_env.py
+      - name: Build images from restrictive checkout modes
+        run: |
+          chmod -R go-rwx backend/app backend/migrations frontend/dist samples
+          docker compose -p synthetic-faxcopy-ci build
+      - name: Start isolated synthetic stack
+        run: docker compose -p synthetic-faxcopy-ci up -d --no-build --wait --wait-timeout 120
+      - name: Verify full synthetic document flow
+        run: python scripts/compose_smoke.py --project synthetic-faxcopy-ci
+      - name: Stop synthetic containers
+        if: always()
+        run: docker compose -p synthetic-faxcopy-ci stop
