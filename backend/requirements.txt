@@ -1,7 +1,7 @@
 # Reproducible baseline tested in this delivery environment.
 # Run pip-audit and update/test these pins before an internet-facing deployment.
-fastapi==0.128.2
-starlette==0.50.0
+fastapi==0.135.4
+starlette==1.3.1
 uvicorn==0.48.0
 SQLAlchemy==2.0.50
 alembic==1.18.4

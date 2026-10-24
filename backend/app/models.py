@@ -96,6 +96,7 @@ class Job(Base):
     report: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     report_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
     preview_available: Mapped[bool] = mapped_column(Boolean, default=False)
+    preview_size_bytes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     lease_token: Mapped[str | None] = mapped_column(String(36), nullable=True)

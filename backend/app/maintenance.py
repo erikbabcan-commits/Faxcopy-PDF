@@ -35,7 +35,8 @@ def erase_job(job_id: str, tenant_id: str, actor_id=None) -> bool:
         result = db.execute(update(Job).where(Job.id == job_id, Job.deleted_at.is_not(None), Job.purged_at.is_(None))
                               .values(purged_at=now()))
         if result.rowcount:
-            db.execute(update(Tenant).where(Tenant.id == tenant_id).values(storage_bytes=Tenant.storage_bytes - job.size_bytes))
+            db.execute(update(Tenant).where(Tenant.id == tenant_id)
+                .values(storage_bytes=Tenant.storage_bytes - job.size_bytes - job.preview_size_bytes))
             audit(db, tenant_id, "job.files_purged", job_id=job_id)
         db.commit()
         return True

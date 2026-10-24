@@ -91,6 +91,7 @@ def main():
     demo.add_argument("--samples", type=Path, default=Path("../samples"))
     demo.add_argument("--confirm-synthetic-data", action="store_true", required=True)
     commands.add_parser("purge-expired")
+    commands.add_parser("reconcile-storage", help="Read-only storage accounting report; never changes files or counters")
     commands.add_parser("work-once")
     args = parser.parse_args()
     if args.command == "migrate":
@@ -120,6 +121,9 @@ def main():
         print("Password reset; sessions and API keys revoked.")
     elif args.command == "seed-demo":
         seed_demo(args.workspace_id, args.samples)
+    elif args.command == "reconcile-storage":
+        from .reconciliation import reconcile_storage
+        print(json.dumps(reconcile_storage(), indent=2))
     elif args.command == "purge-expired":
         from .maintenance import purge_due
         print({"purged": purge_due()})
