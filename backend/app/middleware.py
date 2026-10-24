@@ -1,5 +1,4 @@
 import json
-import re
 import uuid
 
 
@@ -17,24 +16,6 @@ class BodyLimitMiddleware:
             return await self.app(scope, receive, send)
         limit = self.max_bytes if scope.get("path") in ("/api/jobs", "/scan") else 65536
         headers = dict(scope.get("headers", []))
-        # Reject URL delimiters before framework URL reconstruction can reinterpret Host.
-        host_values = [v for k, v in scope.get("headers", []) if k == b"host"]
-        if len(host_values) != 1 or not re.fullmatch(
-            rb"(?:[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?|\[[0-9A-Fa-f:.]+\])(?::[0-9]{1,5})?",
-            host_values[0],
-        ):
-            body = b'{"detail":"Invalid Host header"}'
-            await send({"type": "http.response.start", "status": 400,
-                        "headers": [(b"content-type", b"application/json")]})
-            return await send({"type": "http.response.body", "body": body})
-        # These endpoints accept files only. Reject urlencoded parsing before authentication.
-        if scope.get("method") == "POST" and scope.get("path") in ("/api/jobs", "/scan"):
-            content_type = headers.get(b"content-type", b"").split(b";", 1)[0].strip().lower()
-            if content_type != b"multipart/form-data":
-                body = b'{"detail":"multipart/form-data required"}'
-                await send({"type": "http.response.start", "status": 415,
-                            "headers": [(b"content-type", b"application/json")]})
-                return await send({"type": "http.response.body", "body": body})
         try:
             length = int(headers.get(b"content-length", b"0"))
             if length < 0:
