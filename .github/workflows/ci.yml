@@ -83,6 +83,8 @@ jobs:
         run: docker compose -p synthetic-faxcopy-ci up -d --no-build --wait --wait-timeout 120
       - name: Verify full synthetic document flow
         run: python scripts/compose_smoke.py --project synthetic-faxcopy-ci
+      - name: Verify isolated database and document recovery
+        run: python scripts/recovery_smoke.py --project synthetic-faxcopy-ci
       - name: Stop synthetic containers
         if: always()
         run: docker compose -p synthetic-faxcopy-ci stop
