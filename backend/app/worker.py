@@ -10,7 +10,7 @@ from PIL import Image
 from sqlalchemy import delete, select, update
 from .config import settings
 from .db import audit, session_factory
-from .models import Heartbeat, Job, now
+from .models import Heartbeat, Job, Tenant, now
 from .schemas import digest
 from .scanning import scan, ScanFailure
 from .storage import job_dir
@@ -116,9 +116,24 @@ def process_one() -> bool:
                         raise ValueError("Invalid preview")
                     image.verify()
                 destination = job_dir(job.tenant_id, job.id)
+                delta = len(raw) - current.preview_size_bytes
+                # Serialize quota reservation with uploads and other workers.
+                reserved = db.execute(update(Tenant).where(Tenant.id == job.tenant_id,
+                    Tenant.storage_bytes + delta <= Tenant.storage_limit_bytes)
+                    .values(storage_bytes=Tenant.storage_bytes + delta))
+                if not reserved.rowcount:
+                    raise ValueError("Preview exceeds storage quota")
                 temp = destination / f"{job.lease_token}.png"
-                temp.write_bytes(raw)
-                temp.replace(destination / "preview.png")
+                try:
+                    temp.write_bytes(raw)
+                    temp.replace(destination / "preview.png")
+                except OSError:
+                    db.execute(update(Tenant).where(Tenant.id == job.tenant_id)
+                        .values(storage_bytes=Tenant.storage_bytes - delta))
+                    raise
+                finally:
+                    temp.unlink(missing_ok=True)
+                current.preview_size_bytes = len(raw)
                 current.preview_available = True
             except Exception:
                 log.warning("preview_rejected job=%s", job.id)

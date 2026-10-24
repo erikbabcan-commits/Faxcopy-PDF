@@ -7,7 +7,7 @@ Predvolený lokálny štart a Compose publikujú iba loopback. Neotvárajte port
 ## Povinné kroky pred externými zákazníkmi
 
 1. Čistý build obrazu, `pip check`, vulnerability audit závislostí (`pip-audit`), fix všetkých relevantných zraniteľností, nový beh testov. Dodané piny sú testovaný runtime, nie potvrdenie aktuálnej bezpečnosti. Zamknúť tranzitívne závislosti a image digesty. Nepoužívať automatické major upgrades bez regresií.
-2. Spustiť CI vrátane browser smoke a PostgreSQL testov. Overiť Compose sieťovú izoláciu, pamäťové/time limity, roly DB, pád workera, retry a vytváranie volumes na čistej inštalácii. SQL kompatibilita PostgreSQL je navrhnutá, zatiaľ tu nebola runtime overená.
+2. Spustiť CI vrátane browser smoke a PostgreSQL testov. Overiť Compose sieťovú izoláciu, pamäťové/time limity, roly DB, pád workera, retry a vytváranie volumes na čistej inštalácii. PostgreSQL scenáre a rozdelenie DB rolí sú v `tests/test_postgres_integration.py`; skontrolujte výsledky na aktuálnom SHA. Pozri `RELEASE_GATES.md`.
 3. HTTPS reverse proxy pred API, presný `APP_ORIGIN=https://...`, `SECURE_COOKIES=true`, `APP_ENV=production`. Kód production flag vynucuje HTTPS/cookies, PostgreSQL a nakonfigurovaný skener s tokenom >=32 znakov; nevykonáva bezpečnostný audit.
 4. Edge request rate limiting, limity prenosovej rýchlosti/connection timeout a aplikačných kvót, zákaz priameho prístupu ku skeneru, firewall od skenera na host a DB. Posudzovať izoláciu na samostatnom hoste/mikroVM pri nedôveryhodných PDF. Nastavenie interného bridge samo o sebe nie je záruka úplného egress firewallu.
 5. Zálohovanie DB aj volume ako konzistentný celok, šifrovanie dát a záloh, test obnovy do separátnej inštancie. SQLite režim nie je HA konfigurácia; archivačný snapshot samotného .db počas WAL zápisu nie je bezpečná konzistentná záloha.
@@ -27,7 +27,7 @@ docker compose exec api python -m app.manage purge-expired
 
 Použite spravovaný databázový backup alebo overený `pg_dump` postup. Zastavte upload/worker pri prvej jednoduchej konzistentnej zálohe a súčasne uložte volume dokumentov. Presný postup snapshotov závisí od hosta a úložiska; v balíku nie je neoverený skript, ktorý by tvrdil atómovú zálohu.
 
-Retenčný job beží vo worker slučke približne každých 10 minút. Chyba výmazu sa má odsledovať a znovu spracovať. Audit a hashe pretrvajú. Kvóta `storage_bytes` účtuje originály, nie náhľady, databázu ani dočasné súbory; nezamieňať s reálnou diskovou kapacitou. Po hard crash overiť `.incoming` a orphan adresáre. Automatický orphan reconciler nie je implementovaný.
+Retenčný job beží vo worker slučke približne každých 10 minút. Chyba výmazu sa má odsledovať a znovu spracovať. Audit a hashe pretrvajú. Kvóta `storage_bytes` účtuje originály a novo uložené náhľady; nezahŕňa databázu ani dočasné súbory. Po hard crash a pri existujúcich náhľadoch po migrácii spustite read-only `python -m app.manage reconcile-storage`. Hlási rozdiely bez mazania či opráv. Postup schválenia migrácie a hranice účtovania sú v `RELEASE_GATES.md`.
 
 ## Identity a tajomstvá
 

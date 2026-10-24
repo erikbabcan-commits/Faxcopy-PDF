@@ -4,7 +4,7 @@ x-app-environment: &app-environment
   APP_ENV: ${APP_ENV:-pilot}
   APP_ORIGIN: ${APP_ORIGIN:-http://localhost:8080}
   SECURE_COOKIES: ${SECURE_COOKIES:-false}
-  DATABASE_URL: postgresql+psycopg://presspilot:${POSTGRES_PASSWORD:?Generate .env first}@db:5432/presspilot
+  DATABASE_URL: postgresql+psycopg://presspilot_runtime:${RUNTIME_PASSWORD:?Generate .env first}@db:5432/presspilot
   DATA_DIR: /app/data
   STATIC_DIR: /app/web
   MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
@@ -33,15 +33,19 @@ x-app: &app
 
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb
     environment:
       POSTGRES_DB: presspilot
-      POSTGRES_USER: presspilot
+      POSTGRES_USER: presspilot_admin
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate .env first}
-    volumes: [postgres:/var/lib/postgresql/data]
+      MIGRATION_PASSWORD: ${MIGRATION_PASSWORD:?Generate .env first}
+      RUNTIME_PASSWORD: ${RUNTIME_PASSWORD:?Generate .env first}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./infra/postgres-init.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
     networks: [database]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U presspilot -d presspilot"]
+      test: ["CMD-SHELL", "pg_isready -U presspilot_admin -d presspilot"]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -50,6 +54,9 @@ services:
 
   migrate:
     <<: *app
+    environment:
+      <<: *app-environment
+      DATABASE_URL: postgresql+psycopg://presspilot_migrator:${MIGRATION_PASSWORD:?Generate .env first}@db:5432/presspilot
     command: ["python", "-m", "app.manage", "migrate"]
     restart: "no"
     networks: [database]

@@ -6,27 +6,83 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with: {python-version: '3.13'}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with: {node-version: '22'}
-      - run: python -m pip install -r backend/requirements-dev.txt
+      - run: python -m pip install -r backend/requirements-dev.lock
       - run: npm ci --ignore-scripts --no-audit --no-fund
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
       - name: Check committed browser build matches source
         run: git diff --exit-code -- frontend/dist
-      - run: python -m pytest -q
+      - run: python -m pytest -q --ignore=tests/test_postgres_integration.py
         working-directory: backend
       - run: python -m playwright install --with-deps chromium
       - run: python scripts/browser_smoke.py
       - name: Save browser verification
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: browser-verification
           path: |
             docs/screenshots
             docs/browser-results.json
+
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:17-alpine@sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb
+        env:
+          POSTGRES_USER: presspilot_admin
+          POSTGRES_DB: presspilot
+          POSTGRES_PASSWORD: postgres
+        ports: ["127.0.0.1:5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U presspilot_admin -d presspilot"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      # Disposable runner-only credentials, never used by deployments.
+      PP_TEST_ADMIN_URL: postgresql+psycopg://presspilot_admin:postgres@127.0.0.1:5432/presspilot
+      PP_TEST_MIGRATION_URL: postgresql+psycopg://presspilot_migrator:migration@127.0.0.1:5432/presspilot
+      PP_TEST_RUNTIME_URL: postgresql+psycopg://presspilot_runtime:runtime@127.0.0.1:5432/presspilot
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with: {python-version: '3.13'}
+      - run: python -m pip install -r backend/requirements-dev.lock -r backend/requirements-postgres.lock
+      - name: Provision isolated test roles
+        run: sh infra/postgres-init.sh
+        env:
+          PGHOST: 127.0.0.1
+          PGPASSWORD: postgres
+          POSTGRES_USER: presspilot_admin
+          POSTGRES_DB: presspilot
+          MIGRATION_PASSWORD: migration
+          RUNTIME_PASSWORD: runtime
+      - run: python -m pytest tests/test_postgres_integration.py -q
+        working-directory: backend
+
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - name: Generate disposable test configuration
+        run: python scripts/make_env.py
+      - name: Build images from restrictive checkout modes
+        run: |
+          chmod -R go-rwx backend/app backend/migrations frontend/dist samples
+          docker compose -p synthetic-faxcopy-ci build
+      - name: Start isolated synthetic stack
+        run: docker compose -p synthetic-faxcopy-ci up -d --no-build --wait --wait-timeout 120
+      - name: Verify full synthetic document flow
+        run: python scripts/compose_smoke.py --project synthetic-faxcopy-ci
+      - name: Stop synthetic containers
+        if: always()
+        run: docker compose -p synthetic-faxcopy-ci stop
