@@ -37,3 +37,15 @@ def test_valid_host_syntax_remains_usable(client,host):
 @pytest.mark.parametrize('host',['testserver/path','testserver?x','testserver#x','user@testserver','testserver\\path'])
 def test_invalid_host_syntax_rejected(client,host):
     assert client.get('/healthz',headers={'Host':host}).status_code==400
+
+@pytest.mark.parametrize('scope',['read','upload'])
+def test_scope_uses_router_path_even_without_host_filter(client,account,scope):
+    from fastapi import HTTPException,Request
+    from app.db import session_factory
+    from app.security import current
+    r=client.post('/api/keys',headers=account['headers'],json={'name':'Direct scope regression','scope':scope})
+    request=Request({'type':'http','method':'POST','scheme':'http','path':'/api/members','query_string':b'',
+        'headers':[(b'host',b'testserver/api/jobs?'),(b'authorization',('Bearer '+r.json()['token']).encode())]})
+    with session_factory()() as db, pytest.raises(HTTPException) as exc:
+        current(request,db)
+    assert exc.value.status_code==403
