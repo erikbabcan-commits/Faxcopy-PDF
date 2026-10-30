@@ -48,3 +48,12 @@ are documented in [release gates](docs/RELEASE_GATES.md). Review current audit
 and CI evidence before internet exposure.
 No production credentials, migrations, deployment or auto-import commit is used.
 CI verifies the PR SHA; inspect its actual results rather than assuming green.
+
+## Evidence and reuse boundary
+
+The [change/evidence map](docs/ASKABLE_EVIDENCE.md) identifies specific merged
+changes, their test entrypoints and unresolved provenance questions. Git history
+and the repository MIT file do **not** by themselves establish who owns every
+file in the imported archive or whether a particular change may be supplied
+for external AI training. The owner must review the original archive, upstream
+attribution and third-party rights before reusing any code outside this project.

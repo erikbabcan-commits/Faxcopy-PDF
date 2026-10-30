@@ -7,13 +7,30 @@ from app.inspector import inspect_pdf
 from app.schemas import PRESETS
 
 
-@pytest.mark.parametrize("action", ["/JavaScript", "/Launch"])
+@pytest.mark.parametrize("action", ["/JavaScript", "/Launch", "/GoToR", "/SubmitForm", "/ImportData"])
 def test_active_open_action_never_releases(action):
     writer = PdfWriter()
     writer.add_blank_page(width=100, height=100)
     writer._root_object[NameObject("/OpenAction")] = DictionaryObject({
         NameObject("/S"): NameObject(action),
         NameObject("/JS" if action == "/JavaScript" else "/F"): TextStringObject("inert synthetic fixture"),
+    })
+    output = io.BytesIO()
+    writer.write(output)
+    result = inspect_pdf(output.getvalue(), PRESETS[1][1])
+    assert result["status"] in ("blocked", "error")
+    assert result.get("release_allowed", False) is False
+
+
+def test_nested_page_additional_action_never_releases():
+    """A page-level action must not bypass the document-wide active-content gate."""
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=100, height=100)
+    page[NameObject("/AA")] = DictionaryObject({
+        NameObject("/O"): DictionaryObject({
+            NameObject("/S"): NameObject("/JavaScript"),
+            NameObject("/JS"): TextStringObject("inert synthetic fixture"),
+        }),
     })
     output = io.BytesIO()
     writer.write(output)
